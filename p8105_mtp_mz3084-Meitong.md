@@ -335,7 +335,7 @@ returned to New York City.
 
 ``` r
 # Since the date cannot be shown if I directly made the table, I tried to re-upload the final_data file.
-final_data = read.csv("final_data.csv", stringsAsFactors = FALSE)
+final_data = read.csv("Zillow/final_data.csv", stringsAsFactors = FALSE)
 
 
 str(final_data)

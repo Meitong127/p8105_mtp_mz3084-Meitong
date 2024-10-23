@@ -188,7 +188,7 @@ The table shows that rental prices rose steadily from 2015 to 2024. However, dur
 
 ```{r}
 # Since the date cannot be shown if I directly made the table, I tried to re-upload the final_data file.
-final_data = read.csv("final_data.csv", stringsAsFactors = FALSE)
+final_data = read.csv("Zillow/final_data.csv", stringsAsFactors = FALSE)
 
 
 str(final_data)
