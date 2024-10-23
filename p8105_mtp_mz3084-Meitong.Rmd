@@ -1,0 +1,336 @@
+---
+title: "p8105_mtp_mz3084-Meitong"
+author: "Meitong Zhou"
+date: "2024-10-20"
+output: github_document
+---
+
+```{r}
+library(tidyverse)
+library(rvest)
+```
+
+# Question 1
+Importing, Reshaping and Cleaning Dataset.
+```{r}
+# First, we need to read the three tables. When observing the data set, I found that the dates in the zori and zhvi files did not look neat, so I used `pivot_longer` to make the data set look more beautiful.
+zori_data = read.csv("Zillow/Zip_zori_uc_sfrcondomfr_sm_month_NYC.csv") 
+zori_data = janitor::clean_names(zori_data) |>
+    pivot_longer(
+    cols = starts_with("x20"),
+    names_to = "date",
+    values_to = "rental_price"
+  )
+
+url = "https://p8105.com/data/zip_codes.html"
+zip_code_data = read_html(url) |>
+  html_table(fill = TRUE)
+zip_code_data = zip_code_data[[1]]
+zip_code_data = janitor::clean_names(zip_code_data)
+zhvi_data = read.csv("Zillow/Zip_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month_2023.csv")
+zhvi_data = janitor::clean_names(zhvi_data) |>
+   pivot_longer(
+    cols = starts_with("x20"),
+    names_to = "date",
+    values_to = "house_price"
+  )
+
+```
+
+
+Mutating a new column
+```{r}
+zip_code_data = zip_code_data |>
+  mutate(borough = case_when(
+    county == "New York" ~ "Manhattan",
+    county == "Kings" ~ "Brooklyn",
+    county == "Queens" ~ "Queens",
+    county == "Bronx" ~ "Bronx",
+    county == "Richmond" ~ "Staten Island"
+  ))
+```
+
+
+```{r}
+# When I merged these two tables, I found that these two tables have different variable name: zip_code and region_name, so I unified the name.
+zori_data = zori_data |>
+  rename(zip_code = region_name)
+head(zori_data)
+```
+
+Merging two tables
+```{r}
+merged_data = merge(zori_data, zip_code_data, by = "zip_code")
+head(merged_data) 
+```
+
+
+```{r}
+# In this project we focus on the zip code, borough, rental price and date.
+final_data = merged_data |>
+  select(zip_code, borough, rental_price, date)
+final_data = final_data |> 
+  filter(!is.na(rental_price))
+head(final_data)
+
+
+write.csv(final_data, file = "final_data.csv", row.names = FALSE)
+```
+
+```{r}
+summary(final_data)
+final_data = final_data |>
+  filter(!is.na(borough)) |>
+  distinct()
+```
+
+
+```{r}
+total_observations = nrow(final_data)
+unique_zip_codes = length(unique(final_data$zip_code))
+unique_boroughs = length(unique(final_data$borough))
+```
+
+In the merged data, 
+Total observations: `r nrow(final_data)`
+Number of unique zip codes: `r length(unique(final_data$zip_code))`
+Number of unique boroughs: `r length(unique(final_data$borough))`
+
+
+```{r}
+#Since we are focused on 2023 home values, we will select ZIP code, city, state, house price and date, I also change the region_name into zip_code, so that the variable name can be easy to understand.
+zhvi_df = zhvi_data |>
+  select(region_name, state_name, county_name, house_price, city, date)
+
+zhvi_df = zhvi_df |>
+  rename(zip_code = region_name)
+head(zhvi_df)
+```
+
+
+
+```{r}
+# Check for any missing values or inconsistencies in the dataset.
+summary(zhvi_df)
+```
+
+
+# Question 2
+
+```{r}
+library(dplyr)
+library(knitr)
+```
+
+```{r}
+# change the date into as.Date format
+final_data = final_data |>
+  mutate(date = as.Date(gsub("^x", "", date), format = "%Y_%m_%d"))
+```
+
+
+```{r}
+
+zip_observations = final_data |>
+  group_by(zip_code) |>
+  summarise(Observations = n()) |>
+  arrange(Observations)
+
+
+missing_observations = zip_observations |>
+  filter(Observations < 116)
+
+
+print(missing_observations)
+
+```
+
+The reason that many ZIP codes in the NYC Rental dataset have fewer observations because
+1. Data Gaps: Some ZIP codes may have missing data for certain months due to incomplete records or data collection issues.
+2. Low Rental Activity: Certain areas may have had low rental activity, leading to fewer recorded data points.
+
+```{r}
+zori_zip_codes = unique(zori_data$zip_code)
+zip_code_data_zip_codes = unique(zip_code_data$zip_code)
+
+
+zori_zip_count = length(zori_zip_codes)
+zip_code_data_count = length(zip_code_data$zip_code)
+
+
+missing_in_rental = setdiff(zip_code_data$zip_code, zori_zip_codes)
+
+
+cat("Number of postal codes in rental dataset: ", zori_zip_count, "\n")
+cat("The number of postal codes in the postal code dataset: ", zip_code_data_count, "\n")
+cat("Postal codes that are in the postal code dataset but missing from the rental dataset: \n", missing_in_rental, "\n")
+```
+There are `r  zori_zip_count` zip codes in the rental dataset, and `r zip_code_data_count` zip codes in the zip code dataset. This means that there are quite a few zip codes that have no rental records in the rental dataset. This may be because there is less demand for rentals in some areas, so they are not counted.
+
+```{r}
+final_data = final_data |>
+  mutate(date = as.Date(gsub("^x", "", date), format = "%Y_%m_%d"))
+
+final_data = final_data |>
+  mutate(year = as.numeric(format(date, "%Y")))
+
+
+avg_rent_borough_year = final_data |>
+  group_by(borough, year) |>
+  summarise(avg_rent = mean(rental_price, na.rm = TRUE)) |>
+  arrange(borough, year)
+
+
+print(avg_rent_borough_year)
+```
+The table shows that rental prices rose steadily from 2015 to 2024. However, during the COVID-19 pandemic (2020-2021), rents in some boroughs fell sharply. After the pandemic, rents rose again as demand returned to New York City.
+
+
+```{r}
+# Since the date cannot be shown if I directly made the table, I tried to re-upload the final_data file.
+final_data = read.csv("final_data.csv", stringsAsFactors = FALSE)
+
+
+str(final_data)
+```
+
+
+```{r}
+# Remove the "x" prefix and convert the string to date format
+final_data = final_data |>
+  mutate(date = as.Date(gsub("^x", "", date), format = "%Y_%m_%d"))
+
+
+print(unique(final_data$date))
+```
+
+
+
+```{r include = FALSE}
+# Filter data from January 2020 and January 2021
+filtered_data = final_data |>
+  filter(date %in% c("2020-01-31", "2021-01-31"))
+
+print(filtered_data)
+```
+
+
+
+```{r}
+rent_change = final_data |>
+  filter(date %in% c("2020-01-31", "2021-01-31")) |>
+  pivot_wider(names_from = date, values_from = rental_price) |>
+  mutate(price_drop = `2020-01-31` - `2021-01-31`) |>
+  filter(!is.na(price_drop)) |>
+  group_by(borough) |>
+  summarise(largest_drop = min(price_drop, na.rm = TRUE),
+            neighborhood = zip_code[which.min(price_drop)],
+            .groups = "drop")
+
+print(rent_change)
+```
+
+Bronx: The largest rent drop was `r rent_change$largest_drop[1]` in ZIP Code `r rent_change$neighborhood[1]`.
+Brooklyn: The largest rent drop was `r rent_change$largest_drop[2]` in ZIP Code `r rent_change$neighborhood[2]`.
+Manhattan: The largest rent drop was -36.50 in ZIP Code 10463.
+Queens: The largest rent drop was `r rent_change$largest_drop[3]` in ZIP Code `r rent_change$neighborhood[3]`.
+As can be seen from the table, the rent drops in Queens and the Bronx were larger, which may be related to the higher population density in these areas during the epidemic.
+
+## Question 3
+```{r}
+final_data = final_data |>
+  filter(!is.na(rental_price)) |>
+  mutate(date = as.Date(date, format = "%Y_%m_%d"))
+ggplot(final_data, aes(x = date, y = rental_price, color = borough)) +
+  geom_line(aes(group = zip_code), alpha = 0.4) +
+  facet_wrap(~ borough) +
+  labs(title = "NYC Rental Prices Across ZIP Codes (2015-2024)",
+       x = "Year",
+       y = "Rental Price (ZORI)") +
+  theme(legend.position = "bottom")
+ggsave("results/nyc_rental_prices.png", width = 10, height = 6)
+```
+Rental prices in Manhattan are significantly higher than in other areas and with a significant drop and rapid recovery from 2020 to 2021 (pandamic), indicating that the pandemic has had a significant impact on Manhattan's high-rent market, especially office space and high-end residential markets; Brooklyn and Queens have experienced slight fluctuations during the pandemic, but have grown steadily overall; Bronx rents have grown more slowly and steadily. Data for Staten Island is insufficient.
+
+```{r}
+zhvi_df = zhvi_df |>
+  group_by(zip_code, state_name) |>
+  summarise(avg_house_price = mean(house_price, na.rm = TRUE))
+
+
+ggplot(zhvi_df, aes(x = reorder(state_name, avg_house_price), y = avg_house_price)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "2023 ZIP-code-level House Prices Across States",
+       x = "State",
+       y = "Average House Price") +
+  theme(legend.position = "bottom")
+```
+
+ 
+```{r}
+# For thr last plot, I found that there is one state's house price over 1 billion, which is too extreme. Therefore, I remove some extreme value and make the plot again.
+summary(zhvi_df$avg_house_price)
+
+
+zhvi_df_df = zhvi_df |>
+  filter(avg_house_price < 1e6)
+
+
+ggplot(zhvi_df, aes(x = reorder(state_name, avg_house_price), y = avg_house_price)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "2023 ZIP-code-level House Prices Across States (Filtered)",
+       x = "State",
+       y = "Average House Price") +
+theme(legend.position = "bottom")
+```
+Housing prices in several states are much higher than in other states, such as California (CA) and Texas (TX). However, housing prices in some states such as Idaho (ID), Montana (MT), North Dakota (ND) are significantly lower than other parts of the country, indicating that there is a large gap in housing prices between regions in US.
+
+```{r}
+nyc_prices_2023 = merge(
+  zhvi_df |>
+    select(zip_code, avg_house_price),
+  final_data |>
+    filter(format(date, "%Y") == "2023") |>
+    group_by(zip_code) |>
+    summarise(avg_rental_price = mean(rental_price, na.rm = TRUE)),
+  by = "zip_code"
+)
+
+
+ggplot(nyc_prices_2023, aes(x = avg_rental_price, y = avg_house_price)) +
+  geom_point(alpha = 0.6) +
+  labs(title = "Comparison of Housing Prices vs Rental Prices in NYC (2023)",
+       x = "Average Rental Price (ZORI)",
+       y = "Average House Price (ZHVI)") +
+ theme(legend.position = "bottom")
+```
+There is a positive correlation between housing prices and rental prices. Higher housing prices are usually accompanied by higher rents. In addition, the data points are concentrated in the rental price range of 2,000 to 4,000, and the housing prices are concentrated in the range of 1 million to 3 million. This area reflects the housing and rental price situation in NYC.
+
+
+The Zillow dataset does not include ZIP codes in all regions, and some ZIP codes have incomplete or missing rental or housing price data. In addition, some years of data in the dataset are missing, especially during the COVID-19 period, which may not reflect the true dynamics of the market.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
