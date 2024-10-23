@@ -125,21 +125,21 @@ head(merged_data)
     ## 6 Chelsea and Clinton Manhattan
 
 ``` r
-# In this project we focus on the zip code, borough, rental price and date.
+# In this project we focus on the zip code, borough, neighborhood, rental price and date.
 final_data = merged_data |>
-  select(zip_code, borough, rental_price, date)
+  select(zip_code, borough, rental_price, neighborhood, date)
 final_data = final_data |> 
   filter(!is.na(rental_price))
 head(final_data)
 ```
 
-    ##   zip_code   borough rental_price        date
-    ## 1    10001 Manhattan     3855.089 x2015_01_31
-    ## 2    10001 Manhattan     3892.376 x2015_02_28
-    ## 3    10001 Manhattan     3898.212 x2015_03_31
-    ## 4    10001 Manhattan     3969.644 x2015_04_30
-    ## 5    10001 Manhattan     4033.221 x2015_05_31
-    ## 6    10001 Manhattan     4070.808 x2015_06_30
+    ##   zip_code   borough rental_price        neighborhood        date
+    ## 1    10001 Manhattan     3855.089 Chelsea and Clinton x2015_01_31
+    ## 2    10001 Manhattan     3892.376 Chelsea and Clinton x2015_02_28
+    ## 3    10001 Manhattan     3898.212 Chelsea and Clinton x2015_03_31
+    ## 4    10001 Manhattan     3969.644 Chelsea and Clinton x2015_04_30
+    ## 5    10001 Manhattan     4033.221 Chelsea and Clinton x2015_05_31
+    ## 6    10001 Manhattan     4070.808 Chelsea and Clinton x2015_06_30
 
 ``` r
 write.csv(final_data, file = "final_data.csv", row.names = FALSE)
@@ -149,13 +149,20 @@ write.csv(final_data, file = "final_data.csv", row.names = FALSE)
 summary(final_data)
 ```
 
-    ##     zip_code       borough           rental_price      date          
+    ##     zip_code       borough           rental_price  neighborhood      
     ##  Min.   :10001   Length:10677       Min.   :1102   Length:10677      
     ##  1st Qu.:10028   Class :character   1st Qu.:2243   Class :character  
     ##  Median :10463   Mode  :character   Median :2702   Mode  :character  
     ##  Mean   :10643                      Mean   :2889                     
     ##  3rd Qu.:11221                      3rd Qu.:3373                     
-    ##  Max.   :11693                      Max.   :8423
+    ##  Max.   :11693                      Max.   :8423                     
+    ##      date          
+    ##  Length:10677      
+    ##  Class :character  
+    ##  Mode  :character  
+    ##                    
+    ##                    
+    ## 
 
 ``` r
 final_data = final_data |>
@@ -337,16 +344,17 @@ returned to NYC.
 
 ``` r
 # Since the date cannot be shown if I directly made the table, I tried to re-upload the final_data file.
-final_data = read.csv("Zillow/final_data.csv", stringsAsFactors = FALSE)
+final_data = read.csv("final_data.csv", stringsAsFactors = FALSE)
 
 
 str(final_data)
 ```
 
-    ## 'data.frame':    10677 obs. of  4 variables:
+    ## 'data.frame':    10677 obs. of  5 variables:
     ##  $ zip_code    : int  10001 10001 10001 10001 10001 10001 10001 10001 10001 10001 ...
     ##  $ borough     : chr  "Manhattan" "Manhattan" "Manhattan" "Manhattan" ...
     ##  $ rental_price: num  3855 3892 3898 3970 4033 ...
+    ##  $ neighborhood: chr  "Chelsea and Clinton" "Chelsea and Clinton" "Chelsea and Clinton" "Chelsea and Clinton" ...
     ##  $ date        : chr  "x2015_01_31" "x2015_02_28" "x2015_03_31" "x2015_04_30" ...
 
 ``` r
@@ -384,55 +392,57 @@ print(unique(final_data$date))
     ## [116] "2024-08-31"
 
 ``` r
-rental_2020_01 <- final_data |>
+rental_2020_01 = final_data |>
   filter(date %in% c("2020-01-31")) |>
-  group_by(zip_code, borough) |>
-  summarise(rental_price2020 = mean(rental_price, na.rm = TRUE))
+  group_by(neighborhood, borough) |>
+  summarise(rental_2020_01 = mean(rental_price, na.rm = TRUE), relationship = "many-to-many")
 ```
 
-    ## `summarise()` has grouped output by 'zip_code'. You can override using the
+    ## `summarise()` has grouped output by 'neighborhood'. You can override using the
     ## `.groups` argument.
 
 ``` r
-rental_2021_01 <- final_data |>
+rental_2021_01 = final_data |>
   filter(date %in% c("2021-01-31")) |>
-  group_by(zip_code, borough) |>
-  summarise(rental_price2021 = mean(rental_price, na.rm = TRUE))
+  group_by(neighborhood, borough) |>
+  summarise(rental_2021_01 = mean(rental_price, na.rm = TRUE), relationship = "many-to-many")
 ```
 
-    ## `summarise()` has grouped output by 'zip_code'. You can override using the
+    ## `summarise()` has grouped output by 'neighborhood'. You can override using the
     ## `.groups` argument.
 
 ``` r
-rental_comparison <- rental_2020_01 |>
-  left_join(rental_2021_01, by = c("zip_code", "borough"))
+rental_comparison = rental_2020_01 |>
+  left_join(rental_2021_01, by = c("neighborhood", "borough")) |>
+  filter(!is.na(neighborhood))
 
-rental_comparison <- rental_comparison |>
-  mutate(price_drop = rental_price2020 - rental_price2021) |>
+rental_comparison = rental_comparison |>
+  mutate(price_drop = rental_2020_01 - rental_2021_01) |>
   filter(!is.na(price_drop)) |>
   group_by(borough) |>
   summarise(largest_drop = max(price_drop, na.rm = TRUE),
-            neighborhood = zip_code[which.max(price_drop)]) |>
+            neighborhood = neighborhood[which.max(price_drop)]) |>
   arrange(desc(largest_drop))
+
 
 print(rental_comparison)
 ```
 
     ## # A tibble: 4 × 3
-    ##   borough   largest_drop neighborhood
-    ##   <chr>            <dbl>        <int>
-    ## 1 Manhattan        913.         10007
-    ## 2 Brooklyn         438.         11211
-    ## 3 Queens           217.         11385
-    ## 4 Bronx             16.5        10461
+    ##   borough   largest_drop neighborhood             
+    ##   <chr>            <dbl> <chr>                    
+    ## 1 Manhattan       721.   Lower Manhattan          
+    ## 2 Brooklyn        337.   Bushwick and Williamsburg
+    ## 3 Queens          288.   Northwest Queens         
+    ## 4 Bronx             1.85 Central Bronx
 
-Bronx: The largest rent drop was 16.4553537 in ZIP Code 10461. Brooklyn:
-The largest rent drop was 437.9380917 in ZIP Code 11211. Manhattan: The
-largest rent drop was 912.5965909in ZIP Code 10007. Queens: The largest
-rent drop was 216.9745434 in ZIP Code 11385. As can be seen from the
-table, the rent drops in Manhattan and the Brooklyn were larger, which
-may be related to the higher population density in these areas during
-the epidemic.
+Bronx: The largest rent drop was 1.8530629 in ZIP Code Central Bronx.
+Brooklyn: The largest rent drop was 337.095098 in ZIP Code Bushwick and
+Williamsburg. Manhattan: The largest rent drop was 720.7181166in ZIP
+Code Lower Manhattan. Queens: The largest rent drop was 288.409145 in
+ZIP Code Northwest Queens. As can be seen from the table, the rent drops
+in Manhattan and the Brooklyn were larger, which may be related to the
+higher population density in these areas during the epidemic.
 
 ## Question 3
 

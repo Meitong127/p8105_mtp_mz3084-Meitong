@@ -66,9 +66,9 @@ head(merged_data)
 
 
 ```{r}
-# In this project we focus on the zip code, borough, rental price and date.
+# In this project we focus on the zip code, borough, neighborhood, rental price and date.
 final_data = merged_data |>
-  select(zip_code, borough, rental_price, date)
+  select(zip_code, borough, rental_price, neighborhood, date)
 final_data = final_data |> 
   filter(!is.na(rental_price))
 head(final_data)
@@ -190,7 +190,7 @@ The table shows that rental prices rose steadily from 2015 to 2024. However, dur
 
 ```{r}
 # Since the date cannot be shown if I directly made the table, I tried to re-upload the final_data file.
-final_data = read.csv("Zillow/final_data.csv", stringsAsFactors = FALSE)
+final_data = read.csv("final_data.csv", stringsAsFactors = FALSE)
 
 
 str(final_data)
@@ -217,27 +217,29 @@ print(filtered_data)
 ```
 
 ```{r}
-rental_2020_01 <- final_data |>
+rental_2020_01 = final_data |>
   filter(date %in% c("2020-01-31")) |>
-  group_by(zip_code, borough) |>
-  summarise(rental_price2020 = mean(rental_price, na.rm = TRUE))
+  group_by(neighborhood, borough) |>
+  summarise(rental_2020_01 = mean(rental_price, na.rm = TRUE), relationship = "many-to-many")
 
-rental_2021_01 <- final_data |>
+rental_2021_01 = final_data |>
   filter(date %in% c("2021-01-31")) |>
-  group_by(zip_code, borough) |>
-  summarise(rental_price2021 = mean(rental_price, na.rm = TRUE))
+  group_by(neighborhood, borough) |>
+  summarise(rental_2021_01 = mean(rental_price, na.rm = TRUE), relationship = "many-to-many")
 
 
-rental_comparison <- rental_2020_01 |>
-  left_join(rental_2021_01, by = c("zip_code", "borough"))
+rental_comparison = rental_2020_01 |>
+  left_join(rental_2021_01, by = c("neighborhood", "borough")) |>
+  filter(!is.na(neighborhood))
 
-rental_comparison <- rental_comparison |>
-  mutate(price_drop = rental_price2020 - rental_price2021) |>
+rental_comparison = rental_comparison |>
+  mutate(price_drop = rental_2020_01 - rental_2021_01) |>
   filter(!is.na(price_drop)) |>
   group_by(borough) |>
   summarise(largest_drop = max(price_drop, na.rm = TRUE),
-            neighborhood = zip_code[which.max(price_drop)]) |>
+            neighborhood = neighborhood[which.max(price_drop)]) |>
   arrange(desc(largest_drop))
+
 
 print(rental_comparison)
 ```
