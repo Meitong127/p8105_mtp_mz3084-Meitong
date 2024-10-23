@@ -528,30 +528,27 @@ nyc_prices_2023 = merge(
     select(zip_code, avg_house_price),
   final_data |>
     filter(format(date, "%Y") == "2023") |>
-    group_by(zip_code) |>
-    summarise(avg_rental_price = mean(rental_price, na.rm = TRUE)),
+    mutate(month = format(date, "%Y-%m")) |> 
+    group_by(zip_code, month) |>
+    summarise(avg_rental_price = mean(rental_price, na.rm = TRUE), .groups = "drop"),
   by = "zip_code"
 )
 
-
 ggplot(nyc_prices_2023, aes(x = avg_rental_price, y = avg_house_price)) +
   geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
   labs(title = "Comparison of Housing Prices vs Rental Prices in NYC (2023)",
        x = "Average Rental Price (ZORI)",
        y = "Average House Price (ZHVI)") +
- theme(legend.position = "bottom")
+  theme(legend.position = "bottom")
 ```
-
-    ## `geom_smooth()` using formula = 'y ~ x'
 
 ![](p8105_mtp_mz3084-Meitong_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
 There is a positive correlation between housing prices and rental
 prices. Higher housing prices are usually accompanied by higher rents.
 In addition, the data points are concentrated in the rental price range
-of 2,000 to 4,000, and the housing prices are concentrated in the range
-of 1 million to 3 million, which reflects the housing and rental price
-situation in NYC.
+of 2,000 to 4,000, and the housing prices are concentrated under 3
+million, which reflects the housing and rental price situation in NYC.
 
 The Zillow dataset does not include ZIP codes in all regions, and some
 ZIP codes have incomplete or missing rental or housing price data. In
@@ -559,4 +556,4 @@ addition, some years of data in the dataset are missing, especially
 during the COVID-19 period, which may not reflect the true dynamics of
 the market.
 
-`499 Words`
+`493 Words`
