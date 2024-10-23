@@ -298,6 +298,7 @@ have no rental records in the rental dataset. This may be because there
 is less demand for rentals in some areas, so they are not counted.
 
 ``` r
+final_data = read.csv("Zillow/final_data.csv", stringsAsFactors = FALSE)
 final_data = final_data |>
   mutate(date = as.Date(gsub("^x", "", date), format = "%Y_%m_%d"))
 
@@ -314,19 +315,25 @@ avg_rent_borough_year = final_data |>
 print(avg_rent_borough_year)
 ```
 
-    ## # A tibble: 5 × 3
-    ##   borough        year avg_rent
-    ##   <chr>         <dbl>    <dbl>
-    ## 1 Bronx            NA    2012.
-    ## 2 Brooklyn         NA    2706.
-    ## 3 Manhattan        NA    3348.
-    ## 4 Queens           NA    2403.
-    ## 5 Staten Island    NA    2288.
+    ## # A tibble: 45 × 3
+    ##    borough  year avg_rent
+    ##    <chr>   <dbl>    <dbl>
+    ##  1 Bronx    2015    1760.
+    ##  2 Bronx    2016    1520.
+    ##  3 Bronx    2017    1544.
+    ##  4 Bronx    2018    1639.
+    ##  5 Bronx    2019    1706.
+    ##  6 Bronx    2020    1811.
+    ##  7 Bronx    2021    1858.
+    ##  8 Bronx    2022    2054.
+    ##  9 Bronx    2023    2285.
+    ## 10 Bronx    2024    2497.
+    ## # ℹ 35 more rows
 
 The table shows that rental prices rose steadily from 2015 to 2024.
 However, during the COVID-19 pandemic (2020-2021), rents in some
 boroughs fell sharply. After the pandemic, rents rose again as demand
-returned to New York City.
+returned to NYC.
 
 ``` r
 # Since the date cannot be shown if I directly made the table, I tried to re-upload the final_data file.
@@ -377,34 +384,55 @@ print(unique(final_data$date))
     ## [116] "2024-08-31"
 
 ``` r
-rent_change = final_data |>
-  filter(date %in% c("2020-01-31", "2021-01-31")) |>
-  pivot_wider(names_from = date, values_from = rental_price) |>
-  mutate(price_drop = `2020-01-31` - `2021-01-31`) |>
+rental_2020_01 <- final_data |>
+  filter(date %in% c("2020-01-31")) |>
+  group_by(zip_code, borough) |>
+  summarise(rental_price2020 = mean(rental_price, na.rm = TRUE))
+```
+
+    ## `summarise()` has grouped output by 'zip_code'. You can override using the
+    ## `.groups` argument.
+
+``` r
+rental_2021_01 <- final_data |>
+  filter(date %in% c("2021-01-31")) |>
+  group_by(zip_code, borough) |>
+  summarise(rental_price2021 = mean(rental_price, na.rm = TRUE))
+```
+
+    ## `summarise()` has grouped output by 'zip_code'. You can override using the
+    ## `.groups` argument.
+
+``` r
+rental_comparison <- rental_2020_01 |>
+  left_join(rental_2021_01, by = c("zip_code", "borough"))
+
+rental_comparison <- rental_comparison |>
+  mutate(price_drop = rental_price2020 - rental_price2021) |>
   filter(!is.na(price_drop)) |>
   group_by(borough) |>
-  summarise(largest_drop = min(price_drop, na.rm = TRUE),
-            neighborhood = zip_code[which.min(price_drop)],
-            .groups = "drop")
+  summarise(largest_drop = max(price_drop, na.rm = TRUE),
+            neighborhood = zip_code[which.max(price_drop)]) |>
+  arrange(desc(largest_drop))
 
-print(rent_change)
+print(rental_comparison)
 ```
 
     ## # A tibble: 4 × 3
     ##   borough   largest_drop neighborhood
     ##   <chr>            <dbl>        <int>
-    ## 1 Bronx            -95.0        10467
-    ## 2 Brooklyn         -14.2        11229
-    ## 3 Manhattan        -36.5        10463
-    ## 4 Queens          -101.         11432
+    ## 1 Manhattan        913.         10007
+    ## 2 Brooklyn         438.         11211
+    ## 3 Queens           217.         11385
+    ## 4 Bronx             16.5        10461
 
-Bronx: The largest rent drop was -94.9528548 in ZIP Code 10467.
-Brooklyn: The largest rent drop was -14.2157959 in ZIP Code 11229.
-Manhattan: The largest rent drop was -36.50 in ZIP Code 10463. Queens:
-The largest rent drop was -36.5001011 in ZIP Code 10463. As can be seen
-from the table, the rent drops in Queens and the Bronx were larger,
-which may be related to the higher population density in these areas
-during the epidemic.
+Bronx: The largest rent drop was 16.4553537 in ZIP Code 10461. Brooklyn:
+The largest rent drop was 437.9380917 in ZIP Code 11211. Manhattan: The
+largest rent drop was 912.5965909in ZIP Code 10007. Queens: The largest
+rent drop was 216.9745434 in ZIP Code 11385. As can be seen from the
+table, the rent drops in Manhattan and the Brooklyn were larger, which
+may be related to the higher population density in these areas during
+the epidemic.
 
 ## Question 3
 
@@ -428,13 +456,12 @@ ggsave("results/nyc_rental_prices.png", width = 10, height = 6)
 ```
 
 Rental prices in Manhattan are significantly higher than in other areas
-and with a significant drop and rapid recovery from 2020 to 2021
-(pandamic), indicating that the pandemic has had a significant impact on
-Manhattan’s high-rent market, especially office space and high-end
-residential markets; Brooklyn and Queens have experienced slight
-fluctuations during the pandemic, but have grown steadily overall; Bronx
-rents have grown more slowly and steadily. Data for Staten Island is
-insufficient.
+and with a significant drop and rapid recovery during pandamic,
+indicating that the pandemic has had a significant impact on Manhattan’s
+high-rent market, especially office space and high-end residential
+markets; Brooklyn and Queens have experienced slight fluctuations during
+the pandemic, but have grown steadily overall; Bronx rents have grown
+more slowly and steadily. Data for Staten Island is insufficient.
 
 ``` r
 zhvi_df = zhvi_df |>
@@ -478,13 +505,12 @@ ggplot(zhvi_df, aes(x = reorder(state_name, avg_house_price), y = avg_house_pric
 
 ![](p8105_mtp_mz3084-Meitong_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
 I observe a large number of high-end outliers for states such as
-California (CA), Florida (FL). These outliers dominate the plot,
-especially for states with luxury housing markets, such as New York (NY)
-and California (CA). Therefore, there are significant differences in
-housing prices between the states. States such as California (CA) and
-Hawaii (HI) have significantly higher housing prices than other states.
-In contrast, states such as Arkansas (AR) and Kentucky (KY) have
-significantly lower housing prices.
+California, Florida. These outliers dominate the plot, especially for
+states with luxury housing markets, such as New York and California.
+Therefore, there are significant differences in housing prices between
+the states. States such as California and Hawaii have significantly
+higher housing prices than other states. In contrast, states such as
+Arkansas and Kentucky have significantly lower housing prices.
 
 ``` r
 nyc_prices_2023 = merge(
@@ -514,11 +540,13 @@ There is a positive correlation between housing prices and rental
 prices. Higher housing prices are usually accompanied by higher rents.
 In addition, the data points are concentrated in the rental price range
 of 2,000 to 4,000, and the housing prices are concentrated in the range
-of 1 million to 3 million. This area reflects the housing and rental
-price situation in NYC.
+of 1 million to 3 million, which reflects the housing and rental price
+situation in NYC.
 
 The Zillow dataset does not include ZIP codes in all regions, and some
 ZIP codes have incomplete or missing rental or housing price data. In
 addition, some years of data in the dataset are missing, especially
 during the COVID-19 period, which may not reflect the true dynamics of
 the market.
+
+`499 Words`
