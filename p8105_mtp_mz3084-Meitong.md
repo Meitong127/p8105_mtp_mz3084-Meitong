@@ -464,34 +464,27 @@ ggplot(zhvi_df, aes(x = reorder(state_name, avg_house_price), y = avg_house_pric
 ![](p8105_mtp_mz3084-Meitong_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
 
 ``` r
-# For thr last plot, I found that there is one state's house price over 1 billion, which is too extreme. Therefore, I remove some extreme value and make the plot again.
-summary(zhvi_df$avg_house_price)
-```
-
-    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-    ##   23380  173264  259124  336694  398801 7636362
-
-``` r
-zhvi_df_df = zhvi_df |>
-  filter(avg_house_price < 1e6)
-
+# For thr last plot, I found that there is one state's house price over 1 billion, which is too extreme. Therefore, I change the plot type.
 
 ggplot(zhvi_df, aes(x = reorder(state_name, avg_house_price), y = avg_house_price)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  labs(title = "2023 ZIP-code-level House Prices Across States (Filtered)",
+  geom_boxplot(fill = "steelblue") +
+  labs(title = "2023 ZIP-code-level House Prices Across States",
        x = "State",
        y = "Average House Price") +
-theme(legend.position = "bottom",
-        axis.text.x = element_text(size = 6),  # Adjust the text size.
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(size = 4),
         axis.text.y = element_text(size = 6))
 ```
 
 ![](p8105_mtp_mz3084-Meitong_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
-Housing prices in several states are much higher than in other states,
-such as California (CA) and Texas (TX). However, housing prices in some
-states such as Idaho (ID), Montana (MT), North Dakota (ND) are
-significantly lower than other parts of the country, indicating that
-there is a large gap in housing prices between regions in US.
+I observe a large number of high-end outliers for states such as
+California (CA), Florida (FL). These outliers dominate the plot,
+especially for states with luxury housing markets, such as New York (NY)
+and California (CA). Therefore, there are significant differences in
+housing prices between the states. States such as California (CA) and
+Hawaii (HI) have significantly higher housing prices than other states.
+In contrast, states such as Arkansas (AR) and Kentucky (KY) have
+significantly lower housing prices.
 
 ``` r
 nyc_prices_2023 = merge(
