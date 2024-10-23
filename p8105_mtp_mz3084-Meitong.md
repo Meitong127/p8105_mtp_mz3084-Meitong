@@ -305,21 +305,16 @@ final_data = final_data |>
   mutate(year = as.numeric(format(date, "%Y")))
 
 
-avg_rent_borough_year = final_data |>
-  group_by(borough, year) |>
-  summarise(avg_rent = mean(rental_price, na.rm = TRUE)) |>
+avg_rent_borough_year = final_data |> 
+  group_by(borough, year) |> 
+  summarise(avg_rent = mean(rental_price, na.rm = TRUE), .groups = "drop") |> 
   arrange(borough, year)
-```
 
-    ## `summarise()` has grouped output by 'borough'. You can override using the
-    ## `.groups` argument.
 
-``` r
 print(avg_rent_borough_year)
 ```
 
     ## # A tibble: 5 × 3
-    ## # Groups:   borough [5]
     ##   borough        year avg_rent
     ##   <chr>         <dbl>    <dbl>
     ## 1 Bronx            NA    2012.
@@ -451,17 +446,20 @@ zhvi_df = zhvi_df |>
     ## `.groups` argument.
 
 ``` r
+# Filter out rows with missing values in avg_house_price
+zhvi_df = zhvi_df |> 
+  filter(!is.na(avg_house_price))
+
+
 ggplot(zhvi_df, aes(x = reorder(state_name, avg_house_price), y = avg_house_price)) +
   geom_bar(stat = "identity", fill = "steelblue") +
-  coord_flip() +
   labs(title = "2023 ZIP-code-level House Prices Across States",
        x = "State",
        y = "Average House Price") +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(size = 6),  # Adjust the text size.
+        axis.text.y = element_text(size = 6))
 ```
-
-    ## Warning: Removed 116 rows containing missing values or values outside the scale range
-    ## (`geom_bar()`).
 
 ![](p8105_mtp_mz3084-Meitong_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
 
@@ -470,8 +468,8 @@ ggplot(zhvi_df, aes(x = reorder(state_name, avg_house_price), y = avg_house_pric
 summary(zhvi_df$avg_house_price)
 ```
 
-    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-    ##   23380  173264  259124  336694  398801 7636362     116
+    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    ##   23380  173264  259124  336694  398801 7636362
 
 ``` r
 zhvi_df_df = zhvi_df |>
@@ -480,15 +478,13 @@ zhvi_df_df = zhvi_df |>
 
 ggplot(zhvi_df, aes(x = reorder(state_name, avg_house_price), y = avg_house_price)) +
   geom_bar(stat = "identity", fill = "steelblue") +
-  coord_flip() +
   labs(title = "2023 ZIP-code-level House Prices Across States (Filtered)",
        x = "State",
        y = "Average House Price") +
-theme(legend.position = "bottom")
+theme(legend.position = "bottom",
+        axis.text.x = element_text(size = 6),  # Adjust the text size.
+        axis.text.y = element_text(size = 6))
 ```
-
-    ## Warning: Removed 116 rows containing missing values or values outside the scale range
-    ## (`geom_bar()`).
 
 ![](p8105_mtp_mz3084-Meitong_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
 Housing prices in several states are much higher than in other states,
@@ -511,11 +507,14 @@ nyc_prices_2023 = merge(
 
 ggplot(nyc_prices_2023, aes(x = avg_rental_price, y = avg_house_price)) +
   geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
   labs(title = "Comparison of Housing Prices vs Rental Prices in NYC (2023)",
        x = "Average Rental Price (ZORI)",
        y = "Average House Price (ZHVI)") +
  theme(legend.position = "bottom")
 ```
+
+    ## `geom_smooth()` using formula = 'y ~ x'
 
 ![](p8105_mtp_mz3084-Meitong_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
 There is a positive correlation between housing prices and rental

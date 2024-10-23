@@ -175,9 +175,9 @@ final_data = final_data |>
   mutate(year = as.numeric(format(date, "%Y")))
 
 
-avg_rent_borough_year = final_data |>
-  group_by(borough, year) |>
-  summarise(avg_rent = mean(rental_price, na.rm = TRUE)) |>
+avg_rent_borough_year = final_data |> 
+  group_by(borough, year) |> 
+  summarise(avg_rent = mean(rental_price, na.rm = TRUE), .groups = "drop") |> 
   arrange(borough, year)
 
 
@@ -257,14 +257,19 @@ zhvi_df = zhvi_df |>
   group_by(zip_code, state_name) |>
   summarise(avg_house_price = mean(house_price, na.rm = TRUE))
 
+# Filter out rows with missing values in avg_house_price
+zhvi_df = zhvi_df |> 
+  filter(!is.na(avg_house_price))
+
 
 ggplot(zhvi_df, aes(x = reorder(state_name, avg_house_price), y = avg_house_price)) +
   geom_bar(stat = "identity", fill = "steelblue") +
-  coord_flip() +
   labs(title = "2023 ZIP-code-level House Prices Across States",
        x = "State",
        y = "Average House Price") +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(size = 6),  # Adjust the text size.
+        axis.text.y = element_text(size = 6))
 ```
 
  
@@ -279,11 +284,12 @@ zhvi_df_df = zhvi_df |>
 
 ggplot(zhvi_df, aes(x = reorder(state_name, avg_house_price), y = avg_house_price)) +
   geom_bar(stat = "identity", fill = "steelblue") +
-  coord_flip() +
   labs(title = "2023 ZIP-code-level House Prices Across States (Filtered)",
        x = "State",
        y = "Average House Price") +
-theme(legend.position = "bottom")
+theme(legend.position = "bottom",
+        axis.text.x = element_text(size = 6),  # Adjust the text size.
+        axis.text.y = element_text(size = 6))
 ```
 Housing prices in several states are much higher than in other states, such as California (CA) and Texas (TX). However, housing prices in some states such as Idaho (ID), Montana (MT), North Dakota (ND) are significantly lower than other parts of the country, indicating that there is a large gap in housing prices between regions in US.
 
@@ -301,6 +307,7 @@ nyc_prices_2023 = merge(
 
 ggplot(nyc_prices_2023, aes(x = avg_rental_price, y = avg_house_price)) +
   geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
   labs(title = "Comparison of Housing Prices vs Rental Prices in NYC (2023)",
        x = "Average Rental Price (ZORI)",
        y = "Average House Price (ZHVI)") +
