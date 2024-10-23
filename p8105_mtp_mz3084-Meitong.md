@@ -348,7 +348,7 @@ str(final_data)
     ##  $ date        : chr  "x2015_01_31" "x2015_02_28" "x2015_03_31" "x2015_04_30" ...
 
 ``` r
-# Remove the "x" prefix and convert the string to date format
+# Remove the "x" prefix and convert the string to date format.
 final_data = final_data |>
   mutate(date = as.Date(gsub("^x", "", date), format = "%Y_%m_%d"))
 

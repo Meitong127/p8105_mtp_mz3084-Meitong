@@ -196,7 +196,7 @@ str(final_data)
 
 
 ```{r}
-# Remove the "x" prefix and convert the string to date format
+# Remove the "x" prefix and convert the string to date format.
 final_data = final_data |>
   mutate(date = as.Date(gsub("^x", "", date), format = "%Y_%m_%d"))
 
